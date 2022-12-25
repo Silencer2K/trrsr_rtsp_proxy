@@ -1,5 +1,7 @@
+import logging
 import os
 import re
+import sys
 import time
 
 import requests
@@ -19,6 +21,10 @@ API_HOST = "http://localhost:9997"
 
 UPDATE_INTERVAL = 10
 CHANNELS_UPDATE_INTERVAL = 600
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+LOGGER = logging.getLogger()
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
@@ -78,7 +84,8 @@ class Updater:
 
     @cached(cache=TTLCache(maxsize=1, ttl=CHANNELS_UPDATE_INTERVAL))
     def get_channels(self):
-        print("[updater] update channels list")
+        LOGGER.info("[updater] update channel list")
+
         resp = self.trassir_api.request("channels")
         return {self.get_id(e["name"]): e for e in resp["channels"]}
 
@@ -116,19 +123,21 @@ class Updater:
                 channel in channels
                 and channels[channel].get(f"have_{stream}stream", "") == "1"
             ):
-                print(f"[updater] stream '{path}' is not available")
+                LOGGER.warning(f"[updater] stream '{path}' is not available")
                 continue
 
             if path in paths:
                 if paths[path].get("source", None) is not None:
                     continue
 
-                print(f"[updater] remove /{path}")
+                LOGGER.info(f"[updater] remove /{path}")
+
                 self.api.post(f"config/paths/remove/{path}")
 
             source = self.get_video(channels[channel], stream)
 
-            print(f"[updater] add /{path}: source={source}")
+            LOGGER.info(f"[updater] add /{path}: source={source}")
+
             self.api.post(f"config/paths/add/{path}", {"source": source})
 
 
