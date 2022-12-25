@@ -131,13 +131,11 @@ class Updater:
                     continue
 
                 LOGGER.info(f"[updater] remove /{path}")
-
                 self.api.post(f"config/paths/remove/{path}")
 
             source = self.get_video(channels[channel], stream)
 
             LOGGER.info(f"[updater] add /{path}: source={source}")
-
             self.api.post(f"config/paths/add/{path}", {"source": source})
 
 
