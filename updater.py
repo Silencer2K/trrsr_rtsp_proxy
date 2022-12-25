@@ -78,6 +78,7 @@ class Updater:
 
     @cached(cache=TTLCache(maxsize=1, ttl=CHANNELS_UPDATE_INTERVAL))
     def get_channels(self):
+        print("[updater] update channels list")
         resp = self.trassir_api.request("channels")
         return {self.get_id(e["name"]): e for e in resp["channels"]}
 
