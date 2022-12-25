@@ -1,0 +1,5 @@
+api: yes
+paths:
+  __updater:
+    runOnInit: python ./updater.py
+    runOnInitRestart: yes
