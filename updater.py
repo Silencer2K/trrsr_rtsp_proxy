@@ -3,6 +3,7 @@ import re
 import time
 
 import requests
+from cachetools import TTLCache, cached
 from transliterate import translit
 from urllib3.exceptions import InsecureRequestWarning
 
@@ -15,7 +16,9 @@ TRASSIR_PASSWORD = os.environ["PASSWORD"]
 TRASSIR_STREAMS = os.environ.get("STREAMS", "")
 
 API_HOST = "http://localhost:9997"
+
 UPDATE_INTERVAL = 10
+CHANNELS_UPDATE_INTERVAL = 600
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
@@ -73,6 +76,7 @@ class Updater:
     def get_id(self, name):
         return re.sub(r"[^0-9a-z]+", "_", translit(name, "ru", reversed=True).lower())
 
+    @cached(cache=TTLCache(maxsize=1, ttl=CHANNELS_UPDATE_INTERVAL))
     def get_channels(self):
         resp = self.trassir_api.request("channels")
         return {self.get_id(e["name"]): e for e in resp["channels"]}
