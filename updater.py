@@ -84,7 +84,7 @@ class Updater:
 
     @cached(cache=TTLCache(maxsize=1, ttl=CHANNELS_UPDATE_INTERVAL))
     def get_channels(self):
-        LOGGER.info("[updater] update channel list")
+        LOGGER.debug("[updater] update channel list")
 
         resp = self.trassir_api.request("channels")
         return {self.get_id(e["name"]): e for e in resp["channels"]}
