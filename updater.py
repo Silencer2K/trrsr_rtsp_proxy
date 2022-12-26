@@ -16,14 +16,15 @@ TRASSIR_RTSP_HOST = os.environ["RTSP_HOST"]
 TRASSIR_LOGIN = os.environ["LOGIN"]
 TRASSIR_PASSWORD = os.environ["PASSWORD"]
 
-TRASSIR_STREAMS = os.environ.get("STREAMS", "")
+PATHS = os.environ.get("PATHS", "")
+
+TRASSIR_STREAMS = ["sub"]
 
 API_HOST = "http://localhost:9997"
 
-UPDATE_INTERVAL = 10
-CHANNELS_UPDATE_INTERVAL = 600
+CHECK_INTERVAL = 10
+RELOAD_INTERVAL = 600
 
-SUBSTREAMS = ["sub"]
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
@@ -87,7 +88,7 @@ class Updater:
             r"[^0-9a-z]+", "_", translit(name, "ru", reversed=True).lower().strip()
         )
 
-    @cached(cache=TTLCache(maxsize=1, ttl=CHANNELS_UPDATE_INTERVAL))
+    @cached(cache=TTLCache(maxsize=1, ttl=RELOAD_INTERVAL))
     def get_channels(self):
         LOGGER.debug("[updater] update channel list")
 
@@ -97,13 +98,13 @@ class Updater:
         for channel in sorted(
             resp["channels"], key=lambda x: x["name"] + "|" + x["guid"]
         ):
-            id = self.get_id(channel["name"])
-            if id in channels:
+            channel_id = self.get_id(channel["name"])
+            if channel_id in channels:
                 n = 2
-                while id in channels:
-                    id = self.get_id(channel["name"]) + f"_{n}"
+                while channel_id in channels:
+                    channel_id = self.get_id(channel["name"]) + f"_{n}"
                     n += 1
-            channels[id] = channel
+            channels[channel_id] = channel
 
         return channels
 
@@ -115,47 +116,49 @@ class Updater:
             container="rtsp",
             audio="pcmu",
         )
+
         return f"{TRASSIR_RTSP_HOST}/{resp['token']}"
 
     def check(self):
         channels = self.get_channels()
-        paths = self.api.get("paths/list")["items"]
+        config = self.api.get("paths/list")["items"]
 
-        if len(TRASSIR_STREAMS) > 0:
-            streams = map(lambda x: x.strip(), TRASSIR_STREAMS.split(","))
+        if len(PATHS) > 0:
+            paths = map(lambda x: x.strip(), PATHS.split(","))
         else:
-            streams = []
-            for channel in channels:
-                if channels[channel]["have_mainstream"] == "1":
-                    streams += [channel]
-                for stream in SUBSTREAMS:
-                    if channels[channel][f"have_{stream}stream"] == "1":
-                        streams += [channel + "/" + stream]
+            paths = []
+            for channel_id in channels:
+                if channels[channel_id]["have_mainstream"] == "1":
+                    paths += [channel_id]
+                for stream in TRASSIR_STREAMS:
+                    if channels[channel_id][f"have_{stream}stream"] == "1":
+                        paths += [channel_id + "/" + stream]
 
-        for path in streams:
-            for stream in SUBSTREAMS:
+        for path in paths:
+            for stream in TRASSIR_STREAMS:
                 if path.endswith(f"/{stream}"):
-                    channel = path[: -(1 + len(stream))]
+                    channel_id = path[: -(1 + len(stream))]
                     break
             else:
-                channel, stream = path, "main"
+                channel_id, stream = path, "main"
 
             if not (
-                channel in channels and channels[channel][f"have_{stream}stream"] == "1"
+                channel_id in channels
+                and channels[channel_id][f"have_{stream}stream"] == "1"
             ):
-                LOGGER.warning(f"[updater] stream '{path}' is not available")
+                LOGGER.warning(f"[updater] '{path}' is not available")
                 continue
 
-            if path in paths:
-                if paths[path].get("source", None) is not None:
+            if path in config:
+                if config[path].get("source", None) is not None:
                     continue
 
-                LOGGER.info(f"[updater] remove {path}")
+                LOGGER.info(f"[updater] remove '{path}'")
                 self.api.post(f"config/paths/remove/{path}")
 
-            source = self.get_video(channels[channel], stream)
+            source = self.get_video(channels[channel_id], stream)
 
-            LOGGER.info(f"[updater] add {path}: source={source}")
+            LOGGER.info(f"[updater] add '{path}': source '{source}'")
             self.api.post(f"config/paths/add/{path}", {"source": source})
 
 
@@ -163,4 +166,4 @@ if __name__ == "__main__":
     updater = Updater()
     while True:
         updater.check()
-        time.sleep(UPDATE_INTERVAL)
+        time.sleep(CHECK_INTERVAL)
