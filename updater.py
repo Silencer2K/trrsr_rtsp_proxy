@@ -119,20 +119,30 @@ class Updater:
 
         return f"{TRASSIR_RTSP_HOST}/{resp['token']}"
 
-    def check(self):
-        channels = self.get_channels()
-        config = self.api.get("paths/list")["items"]
+    def get_paths(self, channels):
+        paths = []
 
-        if len(PATHS) > 0:
-            paths = map(lambda x: x.strip(), PATHS.split(","))
-        else:
-            paths = []
-            for channel_id in channels:
-                if channels[channel_id]["have_mainstream"] == "1":
-                    paths += [channel_id]
-                for stream in TRASSIR_STREAMS:
-                    if channels[channel_id][f"have_{stream}stream"] == "1":
-                        paths += [channel_id + "/" + stream]
+        for channel_id in channels:
+            if channels[channel_id]["have_mainstream"] == "1":
+                paths += [channel_id]
+            for stream in TRASSIR_STREAMS:
+                if channels[channel_id][f"have_{stream}stream"] == "1":
+                    paths += [channel_id + "/" + stream]
+
+        return paths
+
+    def check(self, on_start=False):
+        channels = self.get_channels()
+        path_config = self.api.get("paths/list")["items"]
+
+        all_paths = self.get_paths(channels)
+
+        if on_start:
+            LOGGER.info("[updater] available: " + (", ".join(all_paths)))
+
+        paths = (
+            map(lambda x: x.strip(), PATHS.split(",")) if len(PATHS) > 0 else all_paths
+        )
 
         for path in paths:
             for stream in TRASSIR_STREAMS:
@@ -142,15 +152,14 @@ class Updater:
             else:
                 channel_id, stream = path, "main"
 
-            if not (
-                channel_id in channels
-                and channels[channel_id][f"have_{stream}stream"] == "1"
+            if (
+                channel_id not in channels
+                or channels[channel_id][f"have_{stream}stream"] != "1"
             ):
-                LOGGER.warning(f"[updater] '{path}' is not available")
                 continue
 
-            if path in config:
-                if config[path].get("source", None) is not None:
+            if path in path_config:
+                if path_config[path].get("source", None) is not None:
                     continue
 
                 LOGGER.info(f"[updater] remove '{path}'")
@@ -164,6 +173,8 @@ class Updater:
 
 if __name__ == "__main__":
     updater = Updater()
+    updater.check(on_start=True)
+
     while True:
-        updater.check()
         time.sleep(CHECK_INTERVAL)
+        updater.check()
