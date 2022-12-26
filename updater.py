@@ -4,6 +4,7 @@ import re
 import sys
 import time
 
+import jstyleson
 import requests
 from cachetools import TTLCache, cached
 from transliterate import translit
@@ -37,7 +38,7 @@ class TrassirAPI:
         params = {"username": TRASSIR_LOGIN, "password": TRASSIR_PASSWORD}
 
         resp = requests.get(f"{TRASSIR_API_HOST}/login", params, verify=False)
-        resp_json = resp.json()
+        resp_json = jstyleson.loads(resp.text)
 
         if resp_json.get("success", 1) == 0:
             return None
@@ -54,7 +55,7 @@ class TrassirAPI:
         params.update({"sid": self.sid})
 
         resp = requests.get(f"{TRASSIR_API_HOST}/{method}", params, verify=False)
-        resp_json = resp.json()
+        resp_json = jstyleson.loads(resp.text)
 
         if resp_json.get("success", 1) == 0:
             if not reauth and resp_json.get("error_code", "") == "no session":
@@ -87,7 +88,20 @@ class Updater:
         LOGGER.debug("[updater] update channel list")
 
         resp = self.trassir_api.request("channels")
-        return {self.get_id(e["name"]): e for e in resp["channels"]}
+        channels = {}
+
+        for channel in sorted(
+            resp["channels"], key=lambda x: x["name"] + "|" + x["guid"]
+        ):
+            id = self.get_id(channel["name"])
+            if id in channels:
+                n = 2
+                while id in channels:
+                    id = self.get_id(channel["name"]) + f"_{n}"
+                    n += 1
+            channels[id] = channel
+
+        return channels
 
     def get_video(self, channel, stream):
         resp = self.trassir_api.request(

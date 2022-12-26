@@ -1,3 +1,4 @@
 requests
 transliterate
 cachetools
+jstyleson
