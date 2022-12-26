@@ -23,6 +23,8 @@ API_HOST = "http://localhost:9997"
 UPDATE_INTERVAL = 10
 CHANNELS_UPDATE_INTERVAL = 600
 
+SUBSTREAMS = ["sub"]
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
 LOGGER = logging.getLogger()
@@ -126,20 +128,20 @@ class Updater:
             for channel in channels:
                 if channels[channel]["have_mainstream"] == "1":
                     streams += [channel]
-                for stream in ["sub"]:
+                for stream in SUBSTREAMS:
                     if channels[channel][f"have_{stream}stream"] == "1":
                         streams += [channel + "/" + stream]
 
         for path in streams:
-            channel, stream = path, "main"
-
-            m = re.search(r"^(.+)/(sub)$", path)
-            if m:
-                channel, stream = m.group(1, 2)
+            for stream in SUBSTREAMS:
+                if path.endswith(f"/{stream}"):
+                    channel = path[: -(1 + len(stream))]
+                    break
+            else:
+                channel, stream = path, "main"
 
             if not (
-                channel in channels
-                and channels[channel].get(f"have_{stream}stream", "") == "1"
+                channel in channels and channels[channel][f"have_{stream}stream"] == "1"
             ):
                 LOGGER.warning(f"[updater] stream '{path}' is not available")
                 continue
