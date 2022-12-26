@@ -81,7 +81,9 @@ class Updater:
     api = API()
 
     def get_id(self, name):
-        return re.sub(r"[^0-9a-z]+", "_", translit(name, "ru", reversed=True).lower())
+        return re.sub(
+            r"[^0-9a-z]+", "_", translit(name, "ru", reversed=True).lower().strip()
+        )
 
     @cached(cache=TTLCache(maxsize=1, ttl=CHANNELS_UPDATE_INTERVAL))
     def get_channels(self):
@@ -118,20 +120,22 @@ class Updater:
         paths = self.api.get("paths/list")["items"]
 
         if len(TRASSIR_STREAMS) > 0:
-            streams = TRASSIR_STREAMS.split(",")
+            streams = map(lambda x: x.strip(), TRASSIR_STREAMS.split(","))
         else:
             streams = []
             for channel in channels:
                 if channels[channel]["have_mainstream"] == "1":
                     streams += [channel]
-                if channels[channel]["have_substream"] == "1":
-                    streams += [channel + "_sub"]
+                for stream in ["sub"]:
+                    if channels[channel][f"have_{stream}stream"] == "1":
+                        streams += [channel + "/" + stream]
 
         for path in streams:
             channel, stream = path, "main"
 
-            if path.endswith("_sub"):
-                channel, stream = path[:-4], "sub"
+            m = re.search(r"^(.+)/(sub)$", path)
+            if m:
+                channel, stream = m.group(1, 2)
 
             if not (
                 channel in channels
@@ -144,12 +148,12 @@ class Updater:
                 if paths[path].get("source", None) is not None:
                     continue
 
-                LOGGER.info(f"[updater] remove /{path}")
+                LOGGER.info(f"[updater] remove {path}")
                 self.api.post(f"config/paths/remove/{path}")
 
             source = self.get_video(channels[channel], stream)
 
-            LOGGER.info(f"[updater] add /{path}: source={source}")
+            LOGGER.info(f"[updater] add {path}: source={source}")
             self.api.post(f"config/paths/add/{path}", {"source": source})
 
 
