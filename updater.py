@@ -22,7 +22,7 @@ TRASSIR_STREAMS = ["sub"]
 
 API_HOST = "http://localhost:9997"
 
-CHECK_INTERVAL = 10
+CHECK_INTERVAL = 15
 RELOAD_INTERVAL = 600
 
 
@@ -80,8 +80,9 @@ class API:
 
 
 class Updater:
-    trassir_api = TrassirAPI()
-    api = API()
+    def __init__(self):
+        self.trassir_api = TrassirAPI()
+        self.api = API()
 
     def get_id(self, name):
         return re.sub(
@@ -159,7 +160,7 @@ class Updater:
                 continue
 
             if path in path_config:
-                if path_config[path].get("source", None) is not None:
+                if path_config[path]["sourceReady"]:
                     continue
 
                 LOGGER.info(f"[updater] remove '{path}'")
