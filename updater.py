@@ -139,7 +139,7 @@ class Updater:
         all_paths = self.get_paths(channels)
 
         if on_start:
-            LOGGER.info("[updater] available: " + (", ".join(all_paths)))
+            LOGGER.info("[updater] available paths: " + (", ".join(all_paths)))
 
         paths = (
             map(lambda x: x.strip(), PATHS.split(",")) if len(PATHS) > 0 else all_paths
@@ -163,12 +163,12 @@ class Updater:
                 if path_config[path]["sourceReady"]:
                     continue
 
-                LOGGER.info(f"[updater] remove '{path}'")
+                LOGGER.info(f"[updater] removing path '{path}': source is not ready")
                 self.api.post(f"config/paths/remove/{path}")
 
             source = self.get_video(channels[channel_id], stream)
 
-            LOGGER.info(f"[updater] add '{path}': source '{source}'")
+            LOGGER.info(f"[updater] adding path '{path}': source '{source}'")
             self.api.post(f"config/paths/add/{path}", {"source": source})
 
 
