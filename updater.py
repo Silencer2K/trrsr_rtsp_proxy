@@ -143,7 +143,7 @@ class Updater:
         added_paths = list(set(all_paths) - set(self.all_paths))
         removed_paths = list(set(self.all_paths) - set(all_paths))
 
-        self.all_pahts = all_paths
+        self.all_paths = all_paths
 
         for path in removed_paths:
             LOGGER.info(f"[updater] removing path '{path}': no longer available")
