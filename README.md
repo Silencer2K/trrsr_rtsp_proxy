@@ -13,10 +13,11 @@
 3. Run
    ```
    docker run \
+     -p 8554:8554 \
      -e API_HOST=https://<trassir_host>:8080 \
      -e RTSP_HOST=rtsp://<trassir_host>:555 \
      -e LOGIN=<login> \
      -e PASSWORD=<password> \
-     -p 8554:8554 \
+     -e PATHS=*
      trssr_rtsp_proxy
    ```
