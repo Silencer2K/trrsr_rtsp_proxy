@@ -149,7 +149,8 @@ class Updater:
             LOGGER.info(f"[updater] removing path '{path}': no longer available")
             self.api.post(f"config/paths/remove/{path}")
 
-        LOGGER.info("[updater] new paths available: " + (", ".join(added_paths)))
+        if added_paths:
+            LOGGER.info("[updater] new paths available: " + (", ".join(added_paths)))
 
         paths = (
             map(lambda x: x.strip(), PATHS.split(",")) if len(PATHS) > 0 else all_paths
