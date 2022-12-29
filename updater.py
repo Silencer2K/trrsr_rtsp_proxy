@@ -107,6 +107,7 @@ class Updater:
                 while channel_id in channels:
                     channel_id = self.get_id(channel["name"]) + f"_{n}"
                     n += 1
+
             channels[channel_id] = channel
 
         return channels
@@ -136,39 +137,44 @@ class Updater:
 
     def check(self):
         channels = self.get_channels()
-        path_config = self.api.get("paths/list")["items"]
 
         all_paths = self.get_paths(channels)
 
-        added_paths = list(set(all_paths) - set(self.all_paths))
-        removed_paths = list(set(self.all_paths) - set(all_paths))
+        added_paths = sorted(set(all_paths) - set(self.all_paths))
+        removed_paths = sorted(set(self.all_paths) - set(all_paths))
 
         self.all_paths = all_paths
 
-        for path in removed_paths:
-            LOGGER.info(f"[updater] removing path '{path}': no longer available")
-            self.api.post(f"config/paths/remove/{path}")
+        path_config = self.api.get("paths/list")["items"]
+
+        if removed_paths:
+            for path in removed_paths:
+                if path in path_config:
+                    LOGGER.info(
+                        f"[updater] removing path '{path}': no longer available"
+                    )
+                    self.api.post(f"config/paths/remove/{path}")
+
+            path_config = self.api.get("paths/list")["items"]
 
         if added_paths:
             LOGGER.info("[updater] new paths available: " + (", ".join(added_paths)))
 
-        paths = (
-            map(lambda x: x.strip(), PATHS.split(",")) if len(PATHS) > 0 else all_paths
-        )
+        paths = all_paths
 
-        for path in paths:
+        if len(PATHS) > 0:
+            paths = list(map(lambda x: x.strip(), PATHS.split(",")))
+
+        for path in all_paths:
+            if path not in paths:
+                continue
+
             for stream in TRASSIR_STREAMS:
                 if path.endswith(f"/{stream}"):
                     channel_id = path[: -(1 + len(stream))]
                     break
             else:
                 channel_id, stream = path, "main"
-
-            if (
-                channel_id not in channels
-                or channels[channel_id][f"have_{stream}stream"] != "1"
-            ):
-                continue
 
             if path in path_config:
                 if path_config[path]["sourceReady"]:
