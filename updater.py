@@ -84,6 +84,8 @@ class Updater:
         self.trassir_api = TrassirAPI()
         self.api = API()
 
+        self.all_paths = []
+
     def get_id(self, name):
         return re.sub(
             r"[^0-9a-z]+", "_", translit(name, "ru", reversed=True).lower().strip()
@@ -132,14 +134,22 @@ class Updater:
 
         return paths
 
-    def check(self, on_start=False):
+    def check(self):
         channels = self.get_channels()
         path_config = self.api.get("paths/list")["items"]
 
         all_paths = self.get_paths(channels)
 
-        if on_start:
-            LOGGER.info("[updater] available paths: " + (", ".join(all_paths)))
+        added_paths = list(set(all_paths) - set(self.all_paths))
+        removed_paths = list(set(self.all_paths) - set(all_paths))
+
+        self.all_pahts = all_paths
+
+        for path in removed_paths:
+            LOGGER.info(f"[updater] removing path '{path}': no longer available")
+            self.api.post(f"config/paths/remove/{path}")
+
+        LOGGER.info("[updater] new paths available: " + (", ".join(added_paths)))
 
         paths = (
             map(lambda x: x.strip(), PATHS.split(",")) if len(PATHS) > 0 else all_paths
@@ -174,8 +184,6 @@ class Updater:
 
 if __name__ == "__main__":
     updater = Updater()
-    updater.check(on_start=True)
-
     while True:
-        time.sleep(CHECK_INTERVAL)
         updater.check()
+        time.sleep(CHECK_INTERVAL)
