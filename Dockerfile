@@ -11,4 +11,14 @@ COPY config.yml .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN cat config.yml >> rtsp-simple-server.yml
 
+EXPOSE 8554
+
+ENV API_HOST=https://<trassir_host>:8080
+ENV RTSP_HOST=rtsp://<trassir_host>:555
+
+ENV LOGIN=<login>
+ENV PASSWORD=<password>
+
+ENV PATHS=*
+
 ENTRYPOINT [ "./rtsp-simple-server" ]

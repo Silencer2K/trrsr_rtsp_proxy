@@ -16,7 +16,7 @@ TRASSIR_RTSP_HOST = os.environ["RTSP_HOST"]
 TRASSIR_LOGIN = os.environ["LOGIN"]
 TRASSIR_PASSWORD = os.environ["PASSWORD"]
 
-PATHS = os.environ.get("PATHS", "")
+PATHS = os.environ["PATHS"]
 
 TRASSIR_STREAMS = ["sub"]
 
@@ -160,10 +160,7 @@ class Updater:
         if added_paths:
             LOGGER.info("[updater] new paths available: " + (", ".join(added_paths)))
 
-        paths = all_paths
-
-        if len(PATHS) > 0:
-            paths = list(map(lambda x: x.strip(), PATHS.split(",")))
+        paths = all_paths if PATHS == "*" else [x.strip() for x in PATHS.split(",")]
 
         for path in all_paths:
             if path not in paths:
