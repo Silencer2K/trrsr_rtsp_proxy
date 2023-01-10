@@ -9,6 +9,6 @@ docker run \
     -e RTSP_HOST=rtsp://<trassir_host>:555 \
     -e LOGIN=<login> \
     -e PASSWORD=<password> \
-    -e PATHS=*
+    -e PATHS=* \
     trssr_rtsp_proxy
 ```
